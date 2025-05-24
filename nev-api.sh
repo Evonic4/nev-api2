@@ -1,47 +1,43 @@
 #!/bin/bash
-#nev-api
+export PATH="$PATH:/bin:/sbin:/usr/bin:/usr/sbin:/usr/local/bin:/usr/local/sbin"
 
-ver="0.2"
-API_FOLDER="/usr/share/nev-api/"
-HOOK_FILE="${API_FOLDER}/hook.sh"
-PORT="9444"
-echo "$(date '+%Y-%m-%d %H:%M:%S')  |  Start nev-api ver "$ver
+ver="0.22"
+fhome=/usr/share/nev-api/
 
-
-commands(){
-    echo "$(date '+%Y-%m-%d %H:%M:%S')  |  Request : ${REQUEST}"
-	REQUEST=$(echo $REQUEST | sed 's/://g')
-    source "${HOOK_FILE}"
+logger()
+{
+local date1=$(date '+ %Y-%m-%d %H:%M:%S'| sed 's/^[ \t]*//;s/[ \t]*$//')
+echo $date1" nev-api:start "$1
 }
 
-reply(){
-    echo "${1}" > "${API_FOLDER}/temp"
+check_api_port()
+{
+netstat -tupln| grep 9444 > ${fhome}port_api.txt
+coll_str=$(grep -c '' $fhome"port_api.txt"| tr -d '\r')
+if [ $coll_str -eq "0" ]; then
+	logger "check_api_port port=9444 DOWN"
+	cpid=$(sed -n 1"p" $fhome"pid_api.txt" | tr -d '\r')
+	kill -9 $cpid
+	rm -f $fhome"temp"
+	logger "start api"
+	${fhome}api.sh &
+else
+	logger "check_api_port port=9444 OK"
+fi
+trip=$((trip+1))
 }
 
-continue(){
-    REQUEST=$(echo ${REQUEST} | sed 's/^\///;   s/[^/]*\(\/.*\)/\1/')
-}
 
-error(){
-    reply "404 Error | API Not Found"
-}
+#-----START--------------
+logger "Start nev-api ver="$ver
 
-listening(){
-    printf "Listening on port ${PORT}"
-    while true;do
-        cat "${API_FOLDER}/temp" | nc -ln -p ${PORT} -q 1 > >(
-       	while read line;do
-            line=$(echo "${line}" | tr -d '[\r\n]')
-            if echo "${line}" | grep -qE '^GET /' ;then
-                REQUEST=$(echo "${line}" | cut -d ' ' -f2)
-            elif [ "x${line}" = x ];then
-                commands
-            fi
-            done
-        )
-    done
-    rm -f "${API_FOLDER}/temp"
-}
+logger "start api"
+${fhome}api.sh &
 
-mkfifo "${API_FOLDER}/temp"
-listening
+while true; do
+	sleep 2
+	check_api_port
+done
+
+rm -f $fPID
+

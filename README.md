@@ -6,5 +6,5 @@ clear API /cls
 ping /ping  
   
 default port=9444   
-using docker  
+using docker evonic/nev-api:v0.22   
   
